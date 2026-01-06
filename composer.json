@@ -1,5 +1,5 @@
 {
-    "name": "phpoffice/phpword",
+    "name": "metrol/phpword",
     "description": "PHPWord - A pure PHP library for reading and writing word processing documents (OOXML, ODF, RTF, HTML, PDF)",
     "keywords": [
         "PHP", "PHPOffice", "office", "PHPWord", "word", "template", "template processor", "reader", "writer",
@@ -49,7 +49,7 @@
         ],
         "fix": [
             "@php vendor/bin/php-cs-fixer fix --ansi"
-        ], 
+        ],
         "samples": [
             "php samples/Sample_01_SimpleText.php",
             "php samples/Sample_02_TabStops.php",
@@ -108,7 +108,7 @@
     "require": {
         "php": "^7.1|^8.0",
         "ext-dom": "*",
-        "ext-gd": "*",  
+        "ext-gd": "*",
         "ext-zip": "*",
         "ext-json": "*",
         "ext-xml": "*",
