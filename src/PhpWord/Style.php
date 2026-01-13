@@ -34,17 +34,17 @@ class Style
      *
      * @var array
      */
-    private static $styles = [];
+    private static array $styles = [];
 
     /**
      * Add paragraph style.
      *
-     * @param string $styleName
+     * @param string              $styleName
      * @param AbstractStyle|array $styles
      *
      * @return Paragraph
      */
-    public static function addParagraphStyle($styleName, $styles)
+    public static function addParagraphStyle(string $styleName, $styles)
     {
         return self::setStyleValues($styleName, new Paragraph(), $styles);
     }
@@ -52,13 +52,13 @@ class Style
     /**
      * Add font style.
      *
-     * @param string $styleName
+     * @param string              $styleName
      * @param AbstractStyle|array $fontStyle
      * @param AbstractStyle|array $paragraphStyle
      *
      * @return Font
      */
-    public static function addFontStyle($styleName, $fontStyle, $paragraphStyle = null)
+    public static function addFontStyle(string $styleName, $fontStyle, $paragraphStyle = null)
     {
         return self::setStyleValues($styleName, new Font('text', $paragraphStyle), $fontStyle);
     }
@@ -172,12 +172,16 @@ class Style
     /**
      * Get style by name.
      *
-     * @param string $styleName
+     * @param string|null $styleName
      *
      * @return ?AbstractStyle Paragraph|Font|Table|Numbering
      */
-    public static function getStyle($styleName)
+    public static function getStyle(string|null $styleName): ?AbstractStyle
     {
+        if ( $styleName === null ) {
+            return null;
+        }
+
         if (isset(self::$styles[$styleName])) {
             return self::$styles[$styleName];
         }
