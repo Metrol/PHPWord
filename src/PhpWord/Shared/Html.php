@@ -18,13 +18,15 @@
 
 namespace PhpOffice\PhpWord\Shared;
 
-use DOMDocument;
+use Dom;
 use DOMNode;
-use DOMXPath;
 use Exception;
 use PhpOffice\PhpWord\ComplexType\RubyProperties;
 use PhpOffice\PhpWord\Element\AbstractContainer;
+use PhpOffice\PhpWord\Element\AbstractElement;
+use PhpOffice\PhpWord\Element\PageBreak;
 use PhpOffice\PhpWord\Element\Row;
+use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Element\TextRun;
 use PhpOffice\PhpWord\Settings;
@@ -33,15 +35,15 @@ use PhpOffice\PhpWord\SimpleType\NumberFormat;
 use PhpOffice\PhpWord\Style\Paragraph;
 
 /**
- * Common Html functions.
+ * Common HTML functions.
  *
  * @SuppressWarnings("PHPMD.UnusedPrivateMethod") For readWPNode
  */
 class Html
 {
-    private const RGB_REGEXP = '/^\s*rgb\s*[(]\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*[)]\s*$/';
+    private const string RGB_REGEXP = '/^\s*rgb\s*[(]\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*[)]\s*$/';
 
-    protected static $listIndex = 0;
+    protected static int $listIndex = 0;
 
     protected static $xpath;
 
@@ -64,7 +66,11 @@ class Html
      * @param bool $fullHTML If it's a full HTML, no need to add 'body' tag
      * @param bool $preserveWhiteSpace If false, the whitespaces between nodes will be removed
      */
-    public static function addHtml($element, $html, $fullHTML = false, $preserveWhiteSpace = true, $options = null): void
+    public static function addHtml(AbstractContainer $element,
+                                   string            $html,
+                                   bool              $fullHTML = false,
+                                   bool              $preserveWhiteSpace = true,
+                                                     $options = null): void
     {
         /*
          * @todo parse $stylesheet for default styles.  Should result in an array based on id, class and element,
@@ -76,39 +82,33 @@ class Html
         // fix ampersand and angle brackets and add body tag for HTML fragments
         $html = str_replace(["\n", "\r"], '', $html);
         $html = str_replace(['&lt;', '&gt;', '&amp;', '&quot;'], ['_lt_', '_gt_', '_amp_', '_quot_'], $html);
-        $html = html_entity_decode($html, ENT_QUOTES, 'UTF-8');
+        $html = str_replace('&nbsp;', ' ', $html);
+        $html = html_entity_decode($html, ENT_QUOTES | ENT_XML1, 'UTF-8');
         $html = str_replace('&', '&amp;', $html);
-        $html = str_replace(['_lt_', '_gt_', '_amp_', '_quot_'], ['&lt;', '&gt;', '&amp;', '&quot;'], $html);
+        $html = str_replace(['_lt_', '_gt_', '_amp_', '_quot_'], ['&lt;', '&gt;', "&amp;", '&quot;'], $html);
+
+        $html = str_replace(['<strong>', '</strong>'], ['<b>', '</b>'], $html);
 
         if (false === $fullHTML) {
             $html = '<body>' . $html . '</body>';
         }
 
-        // Load DOM
-        if (\PHP_VERSION_ID < 80000) {
-            $orignalLibEntityLoader = libxml_disable_entity_loader(true);
-        }
-        $dom = new DOMDocument();
-        $dom->preserveWhiteSpace = $preserveWhiteSpace;
-        $dom->loadXML($html);
-        static::$xpath = new DOMXPath($dom);
-        $node = $dom->getElementsByTagName('body');
+        $dom = Dom\HTMLDocument::createFromString($html,
+                                                  LIBXML_HTML_NOIMPLIED | Dom\HTML_NO_DEFAULT_NS | LIBXML_NOERROR);
 
+        $node = $dom->getElementsByTagName('body');
         static::parseNode($node->item(0), $element);
-        if (\PHP_VERSION_ID < 80000) {
-            libxml_disable_entity_loader($orignalLibEntityLoader);
-        }
     }
 
     /**
      * parse Inline style of a node.
      *
-     * @param DOMNode $node Node to check on attributes and to compile a style array
+     * @param Dom\Element $node Node to check on attributes and to compile a style array
      * @param array<string, mixed> $styles is supplied, the inline style attributes are added to the already existing style
      *
      * @return array
      */
-    protected static function parseInlineStyle($node, $styles = [])
+    protected static function parseInlineStyle(Dom\Node $node, array $styles = []): array
     {
         if (XML_ELEMENT_NODE == $node->nodeType) {
             $attributes = $node->attributes; // get all the attributes(eg: id, class)
@@ -130,12 +130,12 @@ class Html
                     case 'width':
                         // tables, cells
                         $val = $val === 'auto' ? '100%' : $val;
-                        if (false !== strpos($val, '%')) {
+                        if (str_contains($val, '%')) {
                             // e.g. <table width="100%"> or <td width="50%">
                             $styles['width'] = (int) $val * 50;
                             $styles['unit'] = \PhpOffice\PhpWord\SimpleType\TblWidth::PERCENT;
                         } else {
-                            // e.g. <table width="250> where "250" = 250px (always pixels)
+                            // e.g. <table width="250"> where "250" = 250px (always pixels)
                             $styles['width'] = Converter::pixelToTwip(self::convertHtmlSize($val));
                             $styles['unit'] = \PhpOffice\PhpWord\SimpleType\TblWidth::TWIP;
                         }
@@ -186,12 +186,15 @@ class Html
     /**
      * Parse a node and add a corresponding element to the parent element.
      *
-     * @param DOMNode $node node to parse
-     * @param AbstractContainer $element object to add an element corresponding with the node
+     * @param DOM\Node $node node to parse
+     * @param AbstractElement $element object to add an element corresponding with the node
      * @param array $styles Array with all styles
      * @param array $data Array to transport data to a next level in the DOM tree, for example level of listitems
      */
-    protected static function parseNode($node, $element, $styles = [], $data = []): void
+    protected static function parseNode(Dom\Node $node,
+                                        AbstractElement $element,
+                                        array $styles = [],
+                                        array $data = []): void
     {
         if ($node->nodeName == 'style') {
             self::$css = new Css($node->textContent);
@@ -278,12 +281,15 @@ class Html
     /**
      * Parse child nodes.
      *
-     * @param DOMNode $node
+     * @param DOM\Element $node
      * @param AbstractContainer|Row|Table $element
      * @param array $styles
      * @param array $data
      */
-    protected static function parseChildNodes($node, $element, $styles, $data): void
+    protected static function parseChildNodes(Dom\Node $node,
+                                              AbstractElement $element,
+                                              array $styles,
+                                              array $data): void
     {
         if ('li' != $node->nodeName) {
             $cNodes = $node->childNodes;
@@ -300,15 +306,16 @@ class Html
     /**
      * Parse paragraph node.
      *
-     * @param DOMNode $node
-     * @param AbstractContainer $element
+     * @param Dom\Element $node
+     * @param Section $element
      * @param array &$styles
      *
-     * @return \PhpOffice\PhpWord\Element\PageBreak|TextRun
+     * @return PageBreak|TextRun
      */
-    protected static function parseParagraph($node, $element, &$styles)
+    protected static function parseParagraph(Dom\Element $node, Section|TextRun $element, array &$styles): PageBreak|TextRun
     {
         $styles['paragraph'] = self::recursiveParseStylesInHierarchy($node, $styles['paragraph']);
+
         if (isset($styles['paragraph']['isPageBreak']) && $styles['paragraph']['isPageBreak']) {
             return $element->addPageBreak();
         }
@@ -349,7 +356,7 @@ class Html
      * @todo Think of a clever way of defining header styles, now it is only based on the assumption, that
      * Heading1 - Heading6 are already defined somewhere
      */
-    protected static function parseHeading(DOMNode $node, AbstractContainer $element, array &$styles, string $argument1): TextRun
+    protected static function parseHeading(Dom\Element $node, AbstractContainer $element, array &$styles, string $argument1): TextRun
     {
         $style = new Paragraph();
         $style->setStyleName($argument1);
@@ -361,11 +368,11 @@ class Html
     /**
      * Parse text node.
      *
-     * @param DOMNode $node
+     * @param Dom\Node $node
      * @param AbstractContainer $element
      * @param array &$styles
      */
-    protected static function parseText($node, $element, &$styles): void
+    protected static function parseText(Dom\Node $node, AbstractElement $element, array &$styles): void
     {
         $styles['font'] = self::recursiveParseStylesInHierarchy($node, $styles['font']);
 
@@ -386,7 +393,7 @@ class Html
      * @param string $argument1 Style name
      * @param string $argument2 Style value
      */
-    protected static function parseProperty(&$styles, $argument1, $argument2): void
+    protected static function parseProperty(array &$styles, string $argument1, string $argument2): void
     {
         $styles['font'][$argument1] = $argument2;
     }
@@ -394,7 +401,7 @@ class Html
     /**
      * Parse span node.
      *
-     * @param DOMNode $node
+     * @param Dom\Node $node
      * @param array &$styles
      */
     protected static function parseSpan($node, &$styles): void
@@ -405,7 +412,7 @@ class Html
     /**
      * Parse table node.
      *
-     * @param DOMNode $node
+     * @param Dom\Element $node
      * @param AbstractContainer $element
      * @param array &$styles
      *
@@ -413,7 +420,7 @@ class Html
      *
      * @todo As soon as TableItem, RowItem and CellItem support relative width and height
      */
-    protected static function parseTable($node, $element, &$styles)
+    protected static function parseTable(Dom\Element $node, AbstractContainer $element, array &$styles): Table
     {
         $elementStyles = self::parseInlineStyle($node, $styles['table']);
 
@@ -436,15 +443,16 @@ class Html
     /**
      * Parse a table row.
      *
-     * @param DOMNode $node
+     * @param DOM\Element $node
      * @param Table $element
      * @param array &$styles
      *
      * @return Row $element
      */
-    protected static function parseRow($node, $element, &$styles)
+    protected static function parseRow(Dom\Element $node, Table $element, array &$styles): Row
     {
         $rowStyles = self::parseInlineStyle($node, $styles['row']);
+
         if ($node->parentNode->nodeName == 'thead') {
             $rowStyles['tblHeader'] = true;
         }
@@ -459,17 +467,17 @@ class Html
     /**
      * Parse table cell.
      *
-     * @param DOMNode $node
-     * @param Table $element
+     * @param DOM\Element $node
+     * @param Row $element
      * @param array &$styles
      *
      * @return \PhpOffice\PhpWord\Element\Cell|TextRun $element
      */
-    protected static function parseCell($node, $element, &$styles)
+    protected static function parseCell(Dom\Element $node, Row $element, array &$styles)
     {
         $cellStyles = self::recursiveParseStylesInHierarchy($node, $styles['cell']);
-
         $colspan = $node->getAttribute('colspan');
+
         if (!empty($colspan)) {
             $cellStyles['gridSpan'] = $colspan - 0;
         }
@@ -491,7 +499,32 @@ class Html
      *
      * @return bool Returns true if the node contains an HTML element that cannot be added to TextRun
      */
-    protected static function shouldAddTextRun(DOMNode $node)
+    protected static function shouldAddTextRun(Dom\Element $node): bool
+    {
+        if (!$node->hasChildNodes()) {
+            return false;
+        }
+
+        foreach ($node->childNodes as $child) {
+            if ($child->nodeType === XML_TEXT_NODE and
+                trim($child->nodeValue) !== '') {
+                return true;
+            }
+
+            if ($child->nodeType === XML_ELEMENT_NODE) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Checks if $node contains an HTML element that cannot be added to TextRun.
+     *
+     * @return bool Returns true if the node contains an HTML element that cannot be added to TextRun
+     */
+    protected static function dep_shouldAddTextRun($node)
     {
         $containsBlockElement = self::$xpath->query('.//table|./p|./ul|./ol|./h1|./h2|./h3|./h4|./h5|./h6', $node)->length > 0;
         if ($containsBlockElement) {
@@ -505,7 +538,7 @@ class Html
      * Recursively parses styles on parent nodes
      * TODO if too slow, add caching of parent nodes, !! everything is static here so watch out for concurrency !!
      */
-    protected static function recursiveParseStylesInHierarchy(DOMNode $node, array $style)
+    protected static function recursiveParseStylesInHierarchy(Dom\Node $node, array $style)
     {
         $parentStyle = [];
         if ($node->parentNode != null && XML_ELEMENT_NODE == $node->parentNode->nodeType) {
@@ -553,12 +586,15 @@ class Html
     /**
      * Parse list node.
      *
-     * @param DOMNode $node
+     * @param DOM\Element $node
      * @param AbstractContainer $element
      * @param array &$styles
      * @param array &$data
      */
-    protected static function parseList($node, $element, &$styles, &$data)
+    protected static function parseList(Dom\Element $node,
+                                        AbstractContainer $element,
+                                        array &$styles,
+                                        array &$data)
     {
         $isOrderedList = $node->nodeName === 'ol';
         if (isset($data['listdepth'])) {
@@ -605,7 +641,7 @@ class Html
      *
      * @return array
      */
-    protected static function getListStyle($isOrderedList)
+    protected static function getListStyle(bool $isOrderedList): array
     {
         if ($isOrderedList) {
             return [
@@ -651,7 +687,10 @@ class Html
      * @todo This function is almost the same like `parseChildNodes`. Merged?
      * @todo As soon as ListItem inherits from AbstractContainer or TextRun delete parsing part of childNodes
      */
-    protected static function parseListItem($node, $element, &$styles, $data): void
+    protected static function parseListItem(Dom\Element $node,
+                                            AbstractContainer $element,
+                                            array &$styles,
+                                            array $data): void
     {
         $cNodes = $node->childNodes;
         if (!empty($cNodes)) {
@@ -667,7 +706,7 @@ class Html
      *
      * @param DOMNode $attribute
      */
-    protected static function parseStyle($attribute, array $styles): array
+    protected static function parseStyle(Dom\Attr $attribute, array $styles): array
     {
         $properties = explode(';', trim($attribute->nodeValue, " \t\n\r\0\x0B;"));
 
@@ -904,7 +943,7 @@ class Html
                         // Note - border width normalization:
                         // Width of border in Word is calculated differently than HTML borders, usually showing up too bold.
                         // Smallest 1px (or 1pt) appears in Word like 2-3px/pt in HTML once converted to twips.
-                        // Therefore we need to normalize converted twip value to cca 1/2 of value.
+                        // Therefore, we need to normalize converted twip value to cca 1/2 of value.
                         // This may be adjusted, if better ratio or formula found.
                         // BC change: up to ver. 0.17.0 was $size converted to points - Converter::cssToPoint($size)
                         $size = Converter::cssToTwip($matches[1]);
@@ -1054,7 +1093,7 @@ class Html
      *
      * @return null|string
      */
-    protected static function mapBorderStyle($cssBorderStyle)
+    protected static function mapBorderStyle(string $cssBorderStyle): string|null
     {
         switch ($cssBorderStyle) {
             case 'none':
@@ -1089,7 +1128,7 @@ class Html
      *
      * @return null|string
      */
-    protected static function mapAlign($cssAlignment, $bidi)
+    protected static function mapAlign(string $cssAlignment, bool $bidi): string|null
     {
         switch ($cssAlignment) {
             case 'right':
@@ -1127,9 +1166,10 @@ class Html
      *
      * @return null|string
      */
-    protected static function mapAlignVertical($alignment)
+    protected static function mapAlignVertical(string $alignment): string
     {
         $alignment = strtolower($alignment);
+
         switch ($alignment) {
             case 'top':
             case 'baseline':
@@ -1146,7 +1186,7 @@ class Html
                 // @discuss - which one should apply:
                 // - Word uses default vert. alignment: top
                 // - all browsers use default vert. alignment: middle
-                // Returning empty string means attribute wont be set so use Word default (top).
+                // Returning empty string means attribute won't be set so use Word default (top).
                 return '';
         }
     }
@@ -1156,7 +1196,7 @@ class Html
      *
      * @param string $cssListType
      */
-    protected static function mapListType($cssListType)
+    protected static function mapListType(string $cssListType): string
     {
         switch ($cssListType) {
             case 'a':
@@ -1178,7 +1218,7 @@ class Html
      *
      * @param AbstractContainer $element
      */
-    protected static function parseLineBreak($element): void
+    protected static function parseLineBreak(AbstractContainer $element): void
     {
         $element->addTextBreak();
     }
@@ -1231,20 +1271,20 @@ class Html
         $fontStyle = $styles + ['size' => 3];
 
         $paragraphStyle = $styles + [
-            'lineHeight' => 0.25, // multiply default line height - e.g. 1, 1.5 etc
-            'spacing' => 0, // twip
-            'spaceBefore' => 120, // twip, 240/2 (default line height)
-            'spaceAfter' => 120, // twip
-            'borderBottomSize' => empty($styles['line-height']) ? 1 : $styles['line-height'],
-            'borderBottomColor' => empty($styles['color']) ? '000000' : $styles['color'],
-            'borderBottomStyle' => 'single', // same as "solid"
-        ];
+                'lineHeight' => 0.25, // multiply default line height - e.g. 1, 1.5 etc
+                'spacing' => 0, // twip
+                'spaceBefore' => 120, // twip, 240/2 (default line height)
+                'spaceAfter' => 120, // twip
+                'borderBottomSize' => empty($styles['line-height']) ? 1 : $styles['line-height'],
+                'borderBottomColor' => empty($styles['color']) ? '000000' : $styles['color'],
+                'borderBottomStyle' => 'single', // same as "solid"
+            ];
 
         $element->addText('', $fontStyle, $paragraphStyle);
 
         // Notes: <hr/> cannot be:
         // - table - throws error "cannot be inside textruns", e.g. lists
-        // - line - that is a shape, has different behaviour
+        // - line - that is a shape, has different behavior
         // - repeated text, e.g. underline "_", because of unpredictable line wrapping
     }
 
@@ -1316,12 +1356,12 @@ class Html
     protected static function convertHtmlSize(string $size): float
     {
         // pt
-        if (false !== strpos($size, 'pt')) {
+        if (str_contains($size, 'pt')) {
             return Converter::pointToPixel((float) str_replace('pt', '', $size));
         }
 
         // px
-        if (false !== strpos($size, 'px')) {
+        if (str_contains($size, 'px')) {
             return (float) str_replace('px', '', $size);
         }
 

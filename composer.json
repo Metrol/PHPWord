@@ -112,10 +112,10 @@
         "ext-zip": "*",
         "ext-json": "*",
         "ext-xml": "*",
-        "phpoffice/math": "^0.3"
+        "phpoffice/math": "^0.3",
+        "ext-libxml": "*"
     },
     "require-dev": {
-        "ext-libxml": "*",
         "dompdf/dompdf": "^2.0 || ^3.0",
         "friendsofphp/php-cs-fixer": "^3.3",
         "mpdf/mpdf": "^7.0 || ^8.0",
