@@ -101,6 +101,15 @@ class Html
     }
 
     /**
+     * Escape the HTML text for use with XML
+     *
+     */
+    private static function escapeXmlText(string $text): string
+    {
+        return htmlspecialchars($text, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+    }
+
+    /**
      * parse Inline style of a node.
      *
      * @param Dom\Element $node Node to check on attributes and to compile a style array
@@ -382,7 +391,8 @@ class Html
         }
 
         if (is_callable([$element, 'addText'])) {
-            $element->addText($node->nodeValue, $styles['font'], $styles['paragraph']);
+            $nodeValue = self::escapeXmlText($node->nodeValue);
+            $element->addText($nodeValue, $styles['font'], $styles['paragraph']);
         }
     }
 
@@ -1321,7 +1331,7 @@ class Html
             if ($child->nodeName === '#text') {
                 $content = trim($child->textContent);
                 if ($content !== '') {
-                    $baseTextRun->addText($content);
+                    $baseTextRun->addText(self::escapeXmlText($content));
                 }
             } elseif ($child->nodeName === 'rt') {
                 $rubyTextRun->addText(trim($child->textContent));
