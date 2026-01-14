@@ -26,6 +26,7 @@ use PhpOffice\PhpWord\Element\AbstractContainer;
 use PhpOffice\PhpWord\Element\AbstractElement;
 use PhpOffice\PhpWord\Element\PageBreak;
 use PhpOffice\PhpWord\Element\Row;
+use PhpOffice\PhpWord\Element\Cell;
 use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\Element\Table;
 use PhpOffice\PhpWord\Element\TextRun;
@@ -316,7 +317,7 @@ class Html
      * Parse paragraph node.
      *
      * @param Dom\Element $node
-     * @param Section $element
+     * @param Section|TextRun $element
      * @param array &$styles
      *
      * @return PageBreak|TextRun
@@ -329,7 +330,24 @@ class Html
             return $element->addPageBreak();
         }
 
-        return $element->addTextRun($styles['paragraph']);
+        if ( $element instanceof TextRun ) {
+            $parent = $element->getParent();
+
+            if ( $parent instanceof Cell )
+            {
+                $textrun = $parent->addTextRun($styles['paragraph']);
+            }
+            else
+            {
+                $textrun = $element;
+            }
+        }
+        else
+        {
+            $textrun = $element->addTextRun($styles['paragraph']);
+        }
+
+        return $textrun;
     }
 
     /**
