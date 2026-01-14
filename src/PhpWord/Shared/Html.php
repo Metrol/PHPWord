@@ -707,7 +707,7 @@ class Html
     /**
      * Parse list item node.
      *
-     * @param DOMNode $node
+     * @param Dom\Element $node
      * @param AbstractContainer $element
      * @param array &$styles
      * @param array $data
@@ -721,18 +721,36 @@ class Html
                                             array $data): void
     {
         $cNodes = $node->childNodes;
-        if (!empty($cNodes)) {
-            $listRun = $element->addListItemRun($data['listdepth'], $styles['list'], $styles['paragraph']);
-            foreach ($cNodes as $cNode) {
-                self::parseNode($cNode, $listRun, $styles, $data);
+
+        if (empty($cNodes)) {
+            return;
+        }
+
+        // 🔑 Ensure we add the list item to a valid container
+        if ($element instanceof TextRun) {
+            $parent = $element->getParent();
+
+            if ($parent instanceof Cell) {
+                $element = $parent;
             }
+        }
+
+        $listRun = $element->addListItemRun(
+            $data['listdepth'],
+            $styles['list'],
+            $styles['paragraph']
+        );
+
+        foreach ($cNodes as $cNode) {
+            self::parseNode($cNode, $listRun, $styles, $data);
         }
     }
 
     /**
      * Parse style.
      *
-     * @param DOMNode $attribute
+     * @param Dom\Attr $attribute
+     * @param array $styles
      */
     protected static function parseStyle(Dom\Attr $attribute, array $styles): array
     {
