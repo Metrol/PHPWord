@@ -29,6 +29,8 @@ use PhpOffice\PhpWord\Element\Row;
 use PhpOffice\PhpWord\Element\Cell;
 use PhpOffice\PhpWord\Element\Section;
 use PhpOffice\PhpWord\Element\Table;
+use PhpOffice\PhpWord\Element\Header;
+use PhpOffice\PhpWord\Element\Footer;
 use PhpOffice\PhpWord\Element\TextRun;
 use PhpOffice\PhpWord\Settings;
 use PhpOffice\PhpWord\SimpleType\Jc;
@@ -450,6 +452,19 @@ class Html
      */
     protected static function parseTable(Dom\Element $node, AbstractContainer $element, array &$styles): Table
     {
+        if ($element instanceof TextRun) {
+            $parent = $element->getParent();
+
+            // Table is allowed in Cell, Section, etc.
+            if ($parent instanceof Cell ||
+                $parent instanceof Section ||
+                $parent instanceof Header ||
+                $parent instanceof Footer
+            ) {
+                $element = $parent;
+            }
+        }
+
         $elementStyles = self::parseInlineStyle($node, $styles['table']);
 
         $newElement = $element->addTable($elementStyles);
