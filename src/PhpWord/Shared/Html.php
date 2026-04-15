@@ -241,6 +241,7 @@ class Html
             'u' => ['Property',    null,   null,       $styles,    null,   'underline',    'single'],
             'sup' => ['Property',    null,   null,       $styles,    null,   'superScript',  true],
             'sub' => ['Property',    null,   null,       $styles,    null,   'subScript',    true],
+            's' => ['Property',    null,   null,       $styles,    null,   'strikethrough',    true],
             'span' => ['Span',        $node,  null,       $styles,    null,   null,           null],
             'font' => ['Span',        $node,  null,       $styles,    null,   null,           null],
             'table' => ['Table',       $node,  $element,   $styles,    null,   null,           null],
