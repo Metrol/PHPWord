@@ -423,7 +423,7 @@ class Html
      * @param string $argument1 Style name
      * @param string $argument2 Style value
      */
-    protected static function parseProperty(array &$styles, string $argument1, string $argument2): void
+    protected static function parseProperty(array &$styles, string $argument1, string|bool|null $argument2): void
     {
         $styles['font'][$argument1] = $argument2;
     }
