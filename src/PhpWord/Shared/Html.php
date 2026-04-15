@@ -208,6 +208,14 @@ class Html
                                         array $styles = [],
                                         array $data = []): void
     {
+
+        if ( $node->nodeName === '#text' )
+        {
+            if ( trim($node->nodeValue) === '' ) {
+                return;
+            }
+        }
+
         if ($node->nodeName == 'style') {
             self::$css = new Css($node->textContent);
             self::$css->process();
@@ -750,6 +758,9 @@ class Html
                 $element = $parent;
             }
         }
+
+        $styles['paragraph']['spaceAfter'] = 0;
+        $styles['paragraph']['spaceBefore'] = 0;
 
         $listRun = $element->addListItemRun(
             $data['listdepth'],
