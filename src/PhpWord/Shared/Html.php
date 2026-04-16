@@ -337,6 +337,13 @@ class Html
     {
         $styles['paragraph'] = self::recursiveParseStylesInHierarchy($node, $styles['paragraph']);
 
+        if ( isset($styles['paragraph']['paddingLeft']) )
+        {
+            $styles['paragraph']['indentation'] = [
+                'left' => $styles['paragraph']['paddingLeft']
+            ];
+        }
+
         if (isset($styles['paragraph']['isPageBreak']) && $styles['paragraph']['isPageBreak']) {
             return $element->addPageBreak();
         }
