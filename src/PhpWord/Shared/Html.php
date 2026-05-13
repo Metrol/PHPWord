@@ -661,8 +661,18 @@ class Html
         } else {
             $data['listdepth'] = 0;
             $styles['list'] = 'listStyle_' . self::$listIndex++;
-            $style = $element->getPhpWord()->addNumberingStyle($styles['list'], self::getListStyle($isOrderedList));
 
+            $attributes = $node->attributes;
+            $listStyleAttribute = $attributes->getNamedItem('style');
+            $listStyle = null;
+
+            if ( ! is_null($listStyleAttribute) )
+            {
+                [$styleName, $styleValue] = explode(':', $listStyleAttribute->value);
+                $listStyle = trim(str_replace(';', ' ', $styleValue));
+            }
+
+            $style = $element->getPhpWord()->addNumberingStyle($styles['list'], self::getListStyle($isOrderedList, $listStyle));
             // extract attributes start & type e.g. <ol type="A" start="3">
             $start = 0;
             $type = '';
@@ -700,23 +710,59 @@ class Html
      *
      * @return array
      */
-    protected static function getListStyle(bool $isOrderedList): array
+    protected static function getListStyle(bool $isOrderedList, string|null $listStyle = null): array
     {
         if ($isOrderedList) {
-            return [
-                'type' => 'multilevel',
-                'levels' => [
-                    ['format' => NumberFormat::DECIMAL,      'text' => '%1.', 'alignment' => 'left',  'tabPos' => 720,  'left' => 720,  'hanging' => 360],
-                    ['format' => NumberFormat::LOWER_LETTER, 'text' => '%2.', 'alignment' => 'left',  'tabPos' => 1440, 'left' => 1440, 'hanging' => 360],
-                    ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%3.', 'alignment' => 'right', 'tabPos' => 2160, 'left' => 2160, 'hanging' => 180],
-                    ['format' => NumberFormat::DECIMAL,      'text' => '%4.', 'alignment' => 'left',  'tabPos' => 2880, 'left' => 2880, 'hanging' => 360],
-                    ['format' => NumberFormat::LOWER_LETTER, 'text' => '%5.', 'alignment' => 'left',  'tabPos' => 3600, 'left' => 3600, 'hanging' => 360],
-                    ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%6.', 'alignment' => 'right', 'tabPos' => 4320, 'left' => 4320, 'hanging' => 180],
-                    ['format' => NumberFormat::DECIMAL,      'text' => '%7.', 'alignment' => 'left',  'tabPos' => 5040, 'left' => 5040, 'hanging' => 360],
-                    ['format' => NumberFormat::LOWER_LETTER, 'text' => '%8.', 'alignment' => 'left',  'tabPos' => 5760, 'left' => 5760, 'hanging' => 360],
-                    ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%9.', 'alignment' => 'right', 'tabPos' => 6480, 'left' => 6480, 'hanging' => 180],
-                ],
-            ];
+            switch ( $listStyle )
+            {
+                case 'lower-alpha':
+                    return [
+                        'type' => 'multilevel',
+                        'levels' => [
+                            ['format' => NumberFormat::LOWER_LETTER,  'text' => '%1.', 'alignment' => 'left',  'tabPos' => 720,  'left' => 720,  'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_LETTER,  'text' => '%2.', 'alignment' => 'left',  'tabPos' => 1440, 'left' => 1440, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%3.', 'alignment' => 'right', 'tabPos' => 2160, 'left' => 2160, 'hanging' => 180],
+                            ['format' => NumberFormat::LOWER_LETTER,  'text' => '%4.', 'alignment' => 'left',  'tabPos' => 2880, 'left' => 2880, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%5.', 'alignment' => 'left',  'tabPos' => 3600, 'left' => 3600, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_LETTER,  'text' => '%6.', 'alignment' => 'right', 'tabPos' => 4320, 'left' => 4320, 'hanging' => 180],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%7.', 'alignment' => 'left',  'tabPos' => 5040, 'left' => 5040, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_LETTER,  'text' => '%8.', 'alignment' => 'left',  'tabPos' => 5760, 'left' => 5760, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_LETTER,  'text' => '%9.', 'alignment' => 'right', 'tabPos' => 6480, 'left' => 6480, 'hanging' => 180],
+                        ],
+                    ];
+
+                case 'upper-roman':
+                    return [
+                        'type' => 'multilevel',
+                        'levels' => [
+                            ['format' => NumberFormat::UPPER_ROMAN,  'text' => '%1.', 'alignment' => 'left',  'tabPos' => 720,  'left' => 720,  'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%2.', 'alignment' => 'left',  'tabPos' => 1440, 'left' => 1440, 'hanging' => 360],
+                            ['format' => NumberFormat::UPPER_ROMAN,  'text' => '%3.', 'alignment' => 'right', 'tabPos' => 2160, 'left' => 2160, 'hanging' => 180],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%4.', 'alignment' => 'left',  'tabPos' => 2880, 'left' => 2880, 'hanging' => 360],
+                            ['format' => NumberFormat::UPPER_ROMAN,  'text' => '%5.', 'alignment' => 'left',  'tabPos' => 3600, 'left' => 3600, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%6.', 'alignment' => 'right', 'tabPos' => 4320, 'left' => 4320, 'hanging' => 180],
+                            ['format' => NumberFormat::UPPER_ROMAN,  'text' => '%7.', 'alignment' => 'left',  'tabPos' => 5040, 'left' => 5040, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%8.', 'alignment' => 'left',  'tabPos' => 5760, 'left' => 5760, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%9.', 'alignment' => 'right', 'tabPos' => 6480, 'left' => 6480, 'hanging' => 180],
+                        ],
+                    ];
+
+                default:
+                    return [
+                        'type' => 'multilevel',
+                        'levels' => [
+                            ['format' => NumberFormat::DECIMAL,      'text' => '%1.', 'alignment' => 'left',  'tabPos' => 720,  'left' => 720,  'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_LETTER, 'text' => '%2.', 'alignment' => 'left',  'tabPos' => 1440, 'left' => 1440, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%3.', 'alignment' => 'right', 'tabPos' => 2160, 'left' => 2160, 'hanging' => 180],
+                            ['format' => NumberFormat::DECIMAL,      'text' => '%4.', 'alignment' => 'left',  'tabPos' => 2880, 'left' => 2880, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_LETTER, 'text' => '%5.', 'alignment' => 'left',  'tabPos' => 3600, 'left' => 3600, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%6.', 'alignment' => 'right', 'tabPos' => 4320, 'left' => 4320, 'hanging' => 180],
+                            ['format' => NumberFormat::DECIMAL,      'text' => '%7.', 'alignment' => 'left',  'tabPos' => 5040, 'left' => 5040, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_LETTER, 'text' => '%8.', 'alignment' => 'left',  'tabPos' => 5760, 'left' => 5760, 'hanging' => 360],
+                            ['format' => NumberFormat::LOWER_ROMAN,  'text' => '%9.', 'alignment' => 'right', 'tabPos' => 6480, 'left' => 6480, 'hanging' => 180],
+                        ],
+                    ];
+            }
         }
 
         return [
@@ -734,7 +780,6 @@ class Html
             ],
         ];
     }
-
     /**
      * Parse list item node.
      *
